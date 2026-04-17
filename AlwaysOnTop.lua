@@ -24,7 +24,7 @@ local addonName, addon = ...
 addon.defaults = {
   RESPECT_SORT = false, -- true = do NOT pin local player to top
   RANK_ENABLED = true, -- show ordinal rankings
-  RANK_POSITION = "below", -- "inline" = inline next to values, "below" = row below table (self only)
+  RANK_POSITION = "inline", -- "inline" = inline next to values, "below" = row below table (self only)
   RANK_LOCATION = "suffix", -- "suffix" or "prefix" (inline mode only)
   RANK_TYPE = "self", -- "self" or "everyone" (inline mode only)
   SHOW_SORT_ARROW = true, -- show sort direction arrow on column headers
