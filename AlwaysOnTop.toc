@@ -1,6 +1,6 @@
 ## Interface: 120005, 120001
 ## Title: Always On Top
-## Version: 1.0.0
+## Version: 1.0.1
 ## Author: RBGDEV
 ## Notes: Pins your row to the top of the PvP scoreboard and shows rankings for stats
 ## IconTexture: Interface/AddOns/AlwaysOnTop/logo.tga
