@@ -123,8 +123,13 @@ local function ApplyOrdinal(cell, rank)
     return
   end
 
-  local currentText = fontString:GetText()
-  if not currentText or currentText == "" then
+  -- Skip cells that haven't rendered text yet. Don't use GetText() here:
+  -- retail 11.x+ hardens certain PvP scoreboard FontStrings so that reads
+  -- from addon context return a "secret string" tainted value that fails
+  -- string comparison (`==` raises "attempt to compare ... (a secret string
+  -- value tainted by ...)"). GetStringWidth is a plain numeric query and is
+  -- not subject to that taint.
+  if fontString:GetStringWidth() == 0 then
     return
   end
 
