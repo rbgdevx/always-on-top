@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "language": "en",
+  "ignorePaths": [
+    ".git/**",
+    ".libraries/**",
+    "*.lock",
+    "*.zip"
+  ],
+  "words": [
+    "addon",
+    "addons",
+    "alwaysontop",
+    "aot",
+    "backdrop",
+    "battleground",
+    "battlegrounds",
+    "blizz",
+    "canvas",
+    "dataprovider",
+    "factional",
+    "framelevel",
+    "framestrata",
+    "hooksecurefunc",
+    "luals",
+    "mixin",
+    "mixins",
+    "ordinal",
+    "ordinals",
+    "pvp",
+    "rgba",
+    "scoreboard",
+    "stylua",
+    "untainted",
+    "wow"
+  ],
+  "flagWords": [],
+  "allowCompoundWords": true
+}

@@ -113,31 +113,81 @@ end
 
 local ORDINAL_GAP = 4
 
-local function ApplyOrdinal(cell, rank)
-  if not rank then
+-- Offscreen FontString WE own — so reads aren't tainted. Used to measure the
+-- width of a cell's displayed text, since reading from the cell's own
+-- FontString errors out (see GetCellDisplayText for the why).
+-- Inherits Game12Font to match PVPStringTemplate (PVPMatchTable.xml).
+local measureFS
+local function MeasureText(text)
+  if not measureFS then
+    measureFS = UIParent:CreateFontString(nil, "ARTWORK", "Game12Font")
+    measureFS:Hide()
+  end
+  measureFS:SetText(text)
+  return measureFS:GetStringWidth()
+end
+
+-- Reproduces what Blizzard's PVPCellStringMixin:Populate and
+-- PVPCellStatMixin:Populate write into the cell's FontString. We rebuild the
+-- string from scoreInfo instead of reading cell.text:GetText() because in
+-- retail 12.x+ the scoreboard FontString is hardened: GetText, GetFont, and
+-- GetStringWidth all return tainted "secret" values that raise "attempt to
+-- compare a secret <type> value (execution tainted by 'AlwaysOnTop')" on any
+-- comparison. Writes (SetText/SetPoint) are still allowed; only reads break.
+local function GetCellDisplayText(cell, scoreInfo)
+  if not scoreInfo then
+    return ""
+  end
+  local key = cell.dataProviderKey
+  if type(key) == "string" then
+    local v = scoreInfo[key]
+    if v == nil then
+      return ""
+    end
+    if cell.isAbbreviated then
+      v = AbbreviateNumbers(v)
+    end
+    return tostring(v)
+  elseif type(key) == "number" then
+    local stats = scoreInfo.stats
+    if not stats then
+      return ""
+    end
+    for i = 1, #stats do
+      local s = stats[i]
+      if s.pvpStatID == key then
+        local value = s.pvpStatValue
+        if not value then
+          return ""
+        end
+        local iconName = s.iconName
+        if iconName and iconName ~= "" then
+          if value > 0 then
+            return CreateAtlasMarkup(iconName, 16, 16, 0, -2) .. FLAG_COUNT_TEMPLATE:format(value)
+          end
+          return ""
+        end
+        return tostring(value)
+      end
+    end
+  end
+  return ""
+end
+
+local function ApplyOrdinal(cell, rank, displayText)
+  if not rank or not displayText or displayText == "" then
     return
   end
 
-  local fontString = cell.text
-  if not fontString then
+  local textWidth = MeasureText(displayText)
+  if textWidth == 0 then
     return
   end
 
-  -- Skip cells that haven't rendered text yet. Don't use GetText() here:
-  -- retail 11.x+ hardens certain PvP scoreboard FontStrings so that reads
-  -- from addon context return a "secret string" tainted value that fails
-  -- string comparison (`==` raises "attempt to compare ... (a secret string
-  -- value tainted by ...)"). GetStringWidth is a plain numeric query and is
-  -- not subject to that taint.
-  if fontString:GetStringWidth() == 0 then
-    return
-  end
-
-  -- Create or reuse a floating ordinal FontString (outside text flow)
+  -- Create or reuse a floating ordinal FontString (outside text flow).
+  -- Use Game12Font to match the cell text size; we never read from cell.text.
   if not cell._aotOrdinal then
-    local ordFS = cell:CreateFontString(nil, "OVERLAY")
-    local font, size, flags = fontString:GetFont()
-    ordFS:SetFont(font, size, flags or "")
+    local ordFS = cell:CreateFontString(nil, "OVERLAY", "Game12Font")
     ordFS:SetTextColor(1, 1, 1)
     cell._aotOrdinal = ordFS
   end
@@ -145,14 +195,14 @@ local function ApplyOrdinal(cell, rank)
   local ordFS = cell._aotOrdinal
   ordFS:SetText("(" .. GetOrdinal(rank) .. ")")
 
-  -- Anchor relative to the rendered text, not the cell edge
-  -- Center-justified text: right edge is at center + half text width
-  local halfText = fontString:GetStringWidth() / 2
+  -- Cells are center-justified (Game12Font default; headers also CENTER), so
+  -- the rendered text spans textWidth/2 on each side of the cell's center.
+  local halfText = textWidth / 2
   ordFS:ClearAllPoints()
   if RANK_LOCATION == "suffix" then
-    ordFS:SetPoint("LEFT", fontString, "CENTER", halfText + ORDINAL_GAP, 0)
+    ordFS:SetPoint("LEFT", cell, "CENTER", halfText + ORDINAL_GAP, 0)
   else
-    ordFS:SetPoint("RIGHT", fontString, "CENTER", -(halfText + ORDINAL_GAP), 0)
+    ordFS:SetPoint("RIGHT", cell, "CENTER", -(halfText + ORDINAL_GAP), 0)
   end
 
   ordFS:Show()
@@ -716,7 +766,7 @@ local function ApplyOrdinalsToRow(owner, frame, elementData)
         rankKey = "stat_" .. key
       end
       if rankKey and ranks[rankKey] then
-        ApplyOrdinal(cell, ranks[rankKey])
+        ApplyOrdinal(cell, ranks[rankKey], GetCellDisplayText(cell, scoreInfo))
       end
     end
   end

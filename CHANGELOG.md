@@ -1,5 +1,9 @@
 # Always On Top
 
+## [v1.0.3](https://github.com/rbgdevx/always-on-top/releases/tag/v1.0.3) (2026-05-02)
+
+- Fixing secret value errors in stat strings
+
 ## [v1.0.2](https://github.com/rbgdevx/always-on-top/releases/tag/v1.0.2) (2026-04-17)
 
 - Updating default rank position to "inline"
