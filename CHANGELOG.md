@@ -1,5 +1,9 @@
 # Always On Top
 
+## [v1.0.4](https://github.com/rbgdevx/always-on-top/releases/tag/v1.0.4) (2026-05-04)
+
+- Updating how ranks get added to the table so we don't mess with the column widths
+
 ## [v1.0.3](https://github.com/rbgdevx/always-on-top/releases/tag/v1.0.3) (2026-05-02)
 
 - Fixing secret value errors in stat strings

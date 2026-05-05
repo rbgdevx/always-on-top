@@ -50,7 +50,6 @@ local RANKABLE_STRING_KEYS = {
   healingDone = true,
 }
 
-local ORDINAL_EXTRA_WIDTH = 30
 local ARROW_EXTRA_WIDTH = 14
 
 -------------------------------------------------
@@ -111,7 +110,7 @@ local function GetOrdinal(n)
   end
 end
 
-local ORDINAL_GAP = 4
+local ORDINAL_GAP = 3
 
 -- Offscreen FontString WE own — so reads aren't tainted. Used to measure the
 -- width of a cell's displayed text, since reading from the cell's own
@@ -189,10 +188,17 @@ local function ApplyOrdinal(cell, rank, displayText)
   if not cell._aotOrdinal then
     local ordFS = cell:CreateFontString(nil, "OVERLAY", "Game12Font")
     ordFS:SetTextColor(1, 1, 1)
+    -- Scale down slightly so the ordinal reads as secondary to the value.
+    ordFS:SetTextScale(0.9)
     cell._aotOrdinal = ordFS
   end
 
   local ordFS = cell._aotOrdinal
+  -- Columns are NOT widened to reserve space for the ordinal — it floats as
+  -- an OVERLAY into the cell's natural slack (header label is wider than the
+  -- value, e.g. "Honorable Kills" vs "10"). Slight bleed into neighbor cells
+  -- is acceptable; the alternative (reserving width) collapses the flex Name
+  -- column in BGs with many stat columns.
   ordFS:SetText("(" .. GetOrdinal(rank) .. ")")
 
   -- Cells are center-justified (Game12Font default; headers also CENTER), so
@@ -522,7 +528,7 @@ local function UpdateBelowRanks(container, scrollBox)
               if not container._fontStrings[rankKey] then
                 local fs = container:CreateFontString(nil, "OVERLAY")
                 local font, size, flags = header.text:GetFont()
-                fs:SetFont(font, (size or 10) - 1, flags or "")
+                fs:SetFont(font, size or 10, flags or "")
                 fs:SetTextColor(1, 1, 1)
                 container._fontStrings[rankKey] = fs
               end
@@ -639,36 +645,32 @@ if PVPMatchResults then
 end
 
 -------------------------------------------------
--- Hook: ConstructPVPMatchTable (widen columns + track headers)
+-- Hook: ConstructPVPMatchTable (track headers + reserve arrow width)
 -- Uses hooksecurefunc so original runs untainted
 -------------------------------------------------
--- Applies ordinal/arrow width deltas to every column in the builder based on
--- the current config. Each column stashes the delta it's currently carrying
--- (_aotOrdinalDelta, _aotArrowDelta) so we can cleanly strip-then-re-add on
--- live config changes without accumulating stale width. Returns true if any
--- column width changed (caller should re-arrange).
+-- Applies arrow width delta to every column in the builder based on the
+-- current config. Each column stashes the delta it's currently carrying
+-- (_aotArrowDelta) so we can cleanly strip-then-re-add on live config changes
+-- without accumulating stale width. Ordinals do NOT reserve column width —
+-- they overlay into the cell's natural slack (see ApplyOrdinal). Returns true
+-- if any column width changed (caller should re-arrange).
 local function ApplyColumnDeltas(tableBuilder)
   local changed = false
   for _, column in ipairs(tableBuilder.columns) do
     local header = column:GetHeaderFrame()
-    local args = column.args
     local isSortable = header and header.sortType
-    local isRankable = RANK_ENABLED
-      and RANK_POSITION == "inline"
-      and args
-      and args[1]
-      and (RANKABLE_STRING_KEYS[args[1]] or type(args[1]) == "number")
 
-    local desiredOrdinal = isRankable and ORDINAL_EXTRA_WIDTH or 0
     local desiredArrow = (isSortable and SHOW_SORT_ARROW) and ARROW_EXTRA_WIDTH or 0
-
-    local currentOrdinal = column._aotOrdinalDelta or 0
     local currentArrow = column._aotArrowDelta or 0
 
-    if desiredOrdinal ~= currentOrdinal or desiredArrow ~= currentArrow then
-      column.fixedWidth = (column.fixedWidth or 0) - currentOrdinal - currentArrow + desiredOrdinal + desiredArrow
-      column._aotOrdinalDelta = desiredOrdinal
+    -- Strip any legacy ordinal delta from prior versions so users upgrading
+    -- from <=1.0.3 don't keep the old +30px reservation hanging around.
+    local legacyOrdinal = column._aotOrdinalDelta or 0
+
+    if desiredArrow ~= currentArrow or legacyOrdinal ~= 0 then
+      column.fixedWidth = (column.fixedWidth or 0) - currentArrow - legacyOrdinal + desiredArrow
       column._aotArrowDelta = desiredArrow
+      column._aotOrdinalDelta = nil
       changed = true
     end
   end
